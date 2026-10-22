@@ -1,0 +1,16 @@
+{
+  "name": "Carico Incendio Ed. 298",
+  "short_name": "Carico 298",
+  "description": "Registro entrate/uscite materiali e controllo del carico d'incendio – Edificio 298",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef1f4",
+  "theme_color": "#1d4e89",
+  "lang": "it",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml"}
+  ]
+}

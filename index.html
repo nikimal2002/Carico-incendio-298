@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Carico Incendio Ed. 298</title>
+<meta name="description" content="Registro entrate/uscite materiali e controllo del carico d'incendio – Edificio 298">
+<meta name="theme-color" content="#1d4e89">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Carico 298">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>*,*::before,*::after{box-sizing:border-box}:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<script>
+/* Modalità autonoma (GitHub Pages): se la pagina non è aperta da claude.ai,
+   simula registro, utente e download salvando i dati in questo browser. */
+(function(){
+  if(window.claude) return;
+  var K="ed298-demo-v1", NK="ed298-demo-nome";
+  var DEFAULT_CONFIG={"soglia": 0.85, "locali": [{"id": "cap1", "nome": "Capannetta 1", "gestore": "Fincantieri", "limite": 374000, "iniziale": 372094, "soglia": 0.97, "nota": "Solo scaffalature: nessuno stoccaggio a terra"}, {"id": "lt12", "nome": "Ex loc. tecnico 1-2", "gestore": "Fincantieri", "limite": 185000, "iniziale": 119588}, {"id": "cap2", "nome": "Capannetta 2", "gestore": "Fincantieri", "limite": 363000, "iniziale": 152250}, {"id": "cap3", "nome": "Capannetta 3", "gestore": "Fincantieri", "limite": 375000, "iniziale": 220500}, {"id": "lt34", "nome": "Ex loc. tecnico 3-4", "gestore": "Ditta esterna", "limite": 220000, "iniziale": 0, "nota": "Inventario iniziale da rilevare"}, {"id": "cap4", "nome": "Capannetta 4", "gestore": "Ditta esterna", "limite": 375000, "iniziale": 0, "nota": "Inventario iniziale da rilevare"}], "materiali": [{"codice": "P-SCAF", "nome": "Pallet su scaffale (pallet legno + scatole)", "mj": 394}, {"codice": "P-PES", "nome": "Pallet pesante a terra (legno, cartone, film)", "mj": 797}, {"codice": "TUBI", "nome": "Pacco tubi con gabbia in legno", "mj": 761}, {"codice": "ASC-PAL", "nome": "Ascensori: pallet componenti in cartone", "mj": 1055}, {"codice": "ASC-CASSA", "nome": "Ascensori: cassa in legno", "mj": 1040}, {"codice": "ASC-PLAST", "nome": "Ascensori: pallet pannelli in plastica", "mj": 1968}, {"codice": "ASC-CAVO", "nome": "Ascensori: bobina cavi elettrici", "mj": 1160}]};
+  function clone(o){return JSON.parse(JSON.stringify(o))}
+  function load(){try{var s=JSON.parse(localStorage.getItem(K));if(s&&s.config&&s.movimenti)return s}catch(e){}return {config:clone(DEFAULT_CONFIG),movimenti:{}}}
+  var st=load();
+  function persist(){try{localStorage.setItem(K,JSON.stringify(st))}catch(e){}}
+  function getName(){try{return localStorage.getItem(NK)||""}catch(e){return ""}}
+  var subsCfg=new Set(), subsMov=new Set();
+  function snapDoc(){return {id:"app",exists:!!st.config,data:function(){return st.config},metadata:{fromCache:false,hasPendingWrites:false}}}
+  function snapMov(){
+    var docs=Object.keys(st.movimenti).map(function(id){var d=st.movimenti[id];return {id:id,exists:true,data:function(){return d},metadata:{fromCache:false,hasPendingWrites:false}}})
+      .sort(function(a,b){return a.data().ts<b.data().ts?1:-1});
+    return {docs:docs,size:docs.length,empty:!docs.length,docChanges:function(){return []},metadata:{fromCache:false,hasPendingWrites:false}};
+  }
+  function emit(){subsCfg.forEach(function(f){f(snapDoc())});subsMov.forEach(function(f){f(snapMov())})}
+  window.addEventListener("storage",function(e){if(e.key===K){st=load();emit()}});
+  var db={
+    doc:function(path){
+      if(path==="config/app") return {
+        get:async function(){return snapDoc()},
+        set:async function(d){st.config=clone(d);persist();emit()},
+        onSnapshot:function(n){subsCfg.add(n);setTimeout(function(){n(snapDoc())});return function(){subsCfg.delete(n)}}
+      };
+      var id=path.split("/")[1];
+      return {delete:async function(){delete st.movimenti[id];persist();emit()}};
+    },
+    collection:function(){
+      var q={
+        orderBy:function(){return q}, limit:function(){return q},
+        onSnapshot:function(n){subsMov.add(n);setTimeout(function(){n(snapMov())});return function(){subsMov.delete(n)}},
+        add:async function(d){var id=Date.now().toString(36)+Math.random().toString(36).slice(2,7);var r=clone(d);r.by="n:"+(getName()||"Operatore");st.movimenti[id]=r;persist();emit();return {id:id}}
+      };
+      return q;
+    }
+  };
+  var user={
+    me:async function(){return {id:"n:"+getName(),name:getName(),canEdit:true,isOwner:true,email:null}},
+    can:async function(){return true},
+    profiles:async function(ids){var o={};[].concat(ids).forEach(function(i){o[i]={id:i,name:String(i).indexOf("n:")===0?String(i).slice(2):"",guest:false}});return o}
+  };
+  var downloads={save:async function(r){
+    var b=new Blob([r.data],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    var a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=r.filename;document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},1500);return {status:"saved"};
+  }};
+  var caps={db:db,user:user,downloads:downloads};
+  window.claude={demo:true,
+    use:async function(n){return caps[n]||null},
+    _reset:function(){st={config:clone(DEFAULT_CONFIG),movimenti:{}};persist();emit()},
+    _setName:function(v){try{localStorage.setItem(NK,v)}catch(e){}}
+  };
+})();
+</script>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one-column phone app, sticky header + bottom tab bar; signage-like type, steel neutrals, safety colours only for state */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --line:#d3d9e0; --fg:#14202e; --muted:#5b6878;
+  --accent:#1d4e89; --accent-fg:#ffffff;
+  --ok:#1f7a45; --ok-bg:#e3f3e9; --warn:#9a6400; --warn-bg:#fdf1d6; --bad:#b3261e; --bad-bg:#fbe3e1;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f151c; --surface:#18212b; --line:#2c3846; --fg:#e7edf3; --muted:#9aa8b8;
+  --accent:#7fb0ec; --accent-fg:#0f151c;
+  --ok:#6fd39a; --ok-bg:#163223; --warn:#f1c25e; --warn-bg:#3a2d10; --bad:#ff8a80; --bad-bg:#40191a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f151c; --surface:#18212b; --line:#2c3846; --fg:#e7edf3; --muted:#9aa8b8;
+  --accent:#7fb0ec; --accent-fg:#0f151c;
+  --ok:#6fd39a; --ok-bg:#163223; --warn:#f1c25e; --warn-bg:#3a2d10; --bad:#ff8a80; --bad-bg:#40191a; color-scheme:dark}
+html,body{background:var(--bg)}
+body{color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.4}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 110px;display:flex;flex-direction:column;gap:18px}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+header .in{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+h1{font-family:var(--display);font-weight:700;font-size:24px;letter-spacing:.02em;margin:0;text-transform:uppercase}
+h1 span{color:var(--accent)}
+.sub{font-size:13px;color:var(--muted)}
+h2{font-family:var(--display);font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:600}
+.field{display:flex;flex-direction:column;gap:8px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.opt{appearance:none;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:10px;padding:12px 10px;text-align:left;font:inherit;cursor:pointer;min-height:58px;display:flex;flex-direction:column;gap:2px}
+.opt b{font-weight:600;font-size:15px}
+.opt small{color:var(--muted);font-size:12px;font-family:var(--mono)}
+.opt[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.opt:focus-visible,.btn:focus-visible,select:focus-visible,input:focus-visible,.tab:focus-visible,.seg button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{appearance:none;border:0;background:transparent;color:var(--fg);font:inherit;font-weight:600;padding:11px;border-radius:7px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+select,input[type=text],input[type=number]{font:inherit;font-size:16px;color:var(--fg);background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:12px;width:100%;min-width:0}
+.qty{display:grid;grid-template-columns:56px 1fr 56px;gap:8px}
+.qty button{font:inherit;font-size:26px;font-weight:600;border:1.5px solid var(--line);background:var(--surface);color:var(--fg);border-radius:10px;cursor:pointer}
+.qty input{text-align:center;font-family:var(--mono);font-size:22px}
+.hint{font-size:13px;color:var(--muted)}
+.check{border-radius:12px;padding:14px;border:1.5px solid var(--line);background:var(--surface);display:flex;flex-direction:column;gap:10px}
+.check.ok{border-color:var(--ok);background:var(--ok-bg)}
+.check.warn{border-color:var(--warn);background:var(--warn-bg)}
+.check.bad{border-color:var(--bad);background:var(--bad-bg)}
+.check .verdict{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.02em;text-transform:uppercase}
+.check.ok .verdict{color:var(--ok)} .check.warn .verdict{color:var(--warn)} .check.bad .verdict{color:var(--bad)}
+.bar{position:relative;height:12px;border-radius:6px;background:var(--line);overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;border-radius:6px;background:var(--accent)}
+.bar i.now{background:var(--muted);opacity:.55}
+.bar .lim{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--fg)}
+.nums{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:13px;flex-wrap:wrap}
+.btn{appearance:none;border:0;border-radius:12px;padding:16px;font:inherit;font-weight:600;font-size:17px;cursor:pointer;background:var(--accent);color:var(--accent-fg);width:100%}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+.btn.small{padding:9px 12px;font-size:14px;width:auto}
+.btn.danger{background:var(--bad);color:var(--surface)}
+.room{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.room .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.room .name{font-weight:600}
+.pill{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.bad{background:var(--bad-bg);color:var(--bad)}
+.list{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:12px 14px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .r{text-align:right;font-family:var(--mono);font-size:14px}
+.row .meta{grid-column:1/-1;font-size:12px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.out{color:var(--ok)}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(var(--n,3),1fr)}
+.tab{appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:12px 4px 14px;cursor:pointer;border-top:3px solid transparent}
+.tab[aria-current="page"]{color:var(--accent);border-top-color:var(--accent)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:10px;font-weight:600;z-index:20;max-width:calc(100% - 32px)}
+.demo{display:flex;flex-direction:column;gap:8px;align-items:flex-start;border:1.5px dashed var(--accent);border-radius:12px;padding:14px;font-size:14px;background:var(--surface)}
+.demo label{font-weight:600;font-size:13px;color:var(--muted)}
+.notice{border:1px dashed var(--line);border-radius:12px;padding:16px;color:var(--muted);font-size:14px;background:var(--surface)}
+table.set{width:100%;border-collapse:collapse;font-size:14px}
+table.set td,table.set th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+table.set input{padding:8px;font-size:15px}
+.scroll{overflow-x:auto}
+.num{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:no-preference){.check{transition:background .2s,border-color .2s}.bar i{transition:width .25s}}
+</style>
+
+<header><div class="in"><h1>Carico <span>Ed. 298</span></h1><div class="sub" id="who"></div></div></header>
+<main class="wrap" id="app"><div class="notice">Caricamento in corso…</div></main>
+<nav><div class="in" id="tabs"></div></nav>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+  const $=s=>document.querySelector(s);
+  const fmt=n=>Math.round(n).toLocaleString("it-IT");
+  const pct=n=>(n*100).toLocaleString("it-IT",{maximumFractionDigits:1})+"%";
+  const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const S={db:null,user:null,uid:null,canEdit:false,writeOk:true,config:null,movs:[],ready:false,offline:false,
+    demo:false,resetAsk:false,tab:"reg",form:{locale:null,tipo:"Entrata",mat:"",qta:1,ddt:""},busy:false,confirmDel:null,names:{},lastState:null};
+
+  function totals(){
+    const t={}; if(!S.config) return t;
+    for(const l of S.config.locali) t[l.id]=Number(l.iniziale)||0;
+    for(const m of S.movs){ if(m.locale in t) t[m.locale]+=Number(m.mj)||0; }
+    for(const k in t) if(t[k]<0) t[k]=0;
+    return t;
+  }
+  function level(p,l){ const s=Number(l.soglia)||S.config.soglia||0.85; return p>1?"bad":p>=s?"warn":"ok"; }
+  const label={ok:"Entro i limiti",warn:"Vicino al limite",bad:"Oltre il limite"};
+  function loc(id){return S.config.locali.find(l=>l.id===id)}
+  function mat(c){return S.config.materiali.find(m=>m.codice===c)}
+
+  function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,2600)}
+  function buzz(){try{navigator.vibrate&&navigator.vibrate([180,80,180])}catch(e){}}
+
+  function tabs(){
+    const items=[["reg","Registra"],["loc","Locali"],["sto","Storico"]];
+    if(S.canEdit) items.push(["imp","Impostazioni"]);
+    const el=$("#tabs"); el.style.setProperty("--n",items.length);
+    el.innerHTML=items.map(([k,v])=>`<button class="tab" data-tab="${k}" ${S.tab===k?'aria-current="page"':''}>${v}</button>`).join("");
+  }
+
+  function render(){
+    tabs();
+    const app=$("#app");
+    if(S.offline){app.innerHTML=`<div class="notice">L'app funziona solo aperta da claude.ai con il proprio account. Chiedi al responsabile di condividerti il link con accesso <b>Contributor</b>.</div>`;return}
+    if(!S.ready){app.innerHTML=`<div class="notice">Collegamento al registro condiviso…</div>`;return}
+    if(!S.config){app.innerHTML=`<div class="notice">Il registro non è ancora configurato: i locali e i materiali verranno caricati dal responsabile.</div>`;return}
+    if(S.tab==="reg") renderReg(app); else if(S.tab==="loc") renderLoc(app); else if(S.tab==="sto") renderSto(app); else renderImp(app);
+    if(S.demo&&(S.tab==="reg"||S.tab==="loc")) app.insertAdjacentHTML("afterbegin",demoBanner());
+  }
+  function demoBanner(){
+    const n=(()=>{try{return localStorage.getItem("ed298-demo-nome")||""}catch(e){return ""}})();
+    return `<div class="demo"><div><b>Versione dimostrativa.</b> I dati restano salvati solo su questo dispositivo. Nella versione operativa il registro è condiviso tra tutti gli operatori.</div>
+      <label for="opname">Il tuo nome (compare nello storico)</label><input id="opname" type="text" value="${esc(n)}" placeholder="Nome e cognome" autocomplete="name">
+      ${S.resetAsk?`<button class="btn small danger" id="resetok">Conferma: cancella i movimenti di prova</button>`:`<button class="btn small ghost" id="reset">Ripristina dati iniziali</button>`}</div>`;
+  }
+
+  // ---------- REGISTRA ----------
+  function preview(){
+    const f=S.form, l=f.locale&&loc(f.locale), m=f.mat&&mat(f.mat), q=Math.max(0,Math.floor(Number(f.qta)||0));
+    if(!l||!m||!q) return null;
+    const t=totals()[l.id]||0, sign=f.tipo==="Uscita"?-1:1, delta=sign*q*m.mj, after=Math.max(0,t+delta), lim=Number(l.limite);
+    const free=Math.max(0,lim-t), maxUnits=m.mj>0?Math.floor(free/m.mj):Infinity;
+    const st=f.tipo==="Uscita"?(level(after/lim,l)==="bad"?"bad":"ok"):level(after/lim,l);
+    return {l,m,q,t,after,lim,delta,maxUnits,st,pNow:t/lim,pAfter:after/lim};
+  }
+  function renderReg(app){
+    const f=S.form, T=totals();
+    const locs=S.config.locali.map(l=>{const p=(T[l.id]||0)/l.limite;return `<button class="opt" data-loc="${esc(l.id)}" aria-pressed="${f.locale===l.id}"><b>${esc(l.nome)}</b><small>${pct(p)} del limite</small></button>`}).join("");
+    const mats=`<option value="">Scegli il materiale…</option>`+S.config.materiali.map(m=>`<option value="${esc(m.codice)}" ${f.mat===m.codice?"selected":""}>${esc(m.nome)}</option>`).join("");
+    app.innerHTML=`
+      <section class="field"><h2>1 · Locale</h2><div class="grid2">${locs}</div></section>
+      <section class="field"><h2>2 · Movimento</h2>
+        <div class="seg"><button data-tipo="Entrata" aria-pressed="${f.tipo==="Entrata"}">Entrata</button><button data-tipo="Uscita" aria-pressed="${f.tipo==="Uscita"}">Uscita</button></div></section>
+      <section class="field"><h2><label for="mat">3 · Materiale</label></h2><select id="mat">${mats}</select><div class="hint" id="matinfo"></div></section>
+      <section class="field"><h2><label for="qta">4 · Quantità (n. unità)</label></h2>
+        <div class="qty"><button data-q="-1" aria-label="Diminuisci">−</button><input id="qta" type="number" inputmode="numeric" min="1" step="1" value="${esc(f.qta)}"><button data-q="1" aria-label="Aumenta">+</button></div></section>
+      <section class="field"><h2><label for="ddt">Rif. DDT (facoltativo)</label></h2><input id="ddt" type="text" value="${esc(f.ddt)}" placeholder="es. DDT 1234 del 22/10"></section>
+      <div id="check"></div>
+      <button class="btn" id="save">Registra</button>
+      ${S.writeOk?"":`<div class="notice">Il tuo accesso è in sola lettura: chiedi al responsabile l'accesso Contributor per registrare.</div>`}`;
+    updateCheck();
+  }
+  function updateCheck(){
+    const box=$("#check"); if(!box) return;
+    const m=S.form.mat&&mat(S.form.mat); const mi=$("#matinfo");
+    if(mi) mi.textContent=m?`${fmt(m.mj)} MJ per unità`:"";
+    const p=preview(), btn=$("#save");
+    if(!p){box.innerHTML=`<div class="check"><div class="hint">Scegli locale, materiale e quantità: il controllo del limite compare qui.</div></div>`;btn.disabled=true;btn.textContent="Registra";S.lastState=null;return}
+    const isIn=S.form.tipo==="Entrata";
+    let verdict, text;
+    if(isIn&&p.st==="bad"){verdict="Limite superato – non far entrare";
+      text=p.maxUnits>0?`In ${esc(p.l.nome)} possono entrare al massimo <b>${fmt(p.maxUnits)}</b> unità di questo materiale.`:`${esc(p.l.nome)} è già al limite: nessuna unità di questo materiale può entrare.`}
+    else if(isIn&&p.st==="warn"){verdict="Attenzione: vicino al limite";text=`Dopo l'ingresso il locale sarà al ${pct(p.pAfter)}. Avvisa il coordinatore antincendio. Ancora ammesse: ${fmt(p.maxUnits)} unità.`}
+    else if(isIn){verdict="Ingresso ammesso";text=`Dopo l'ingresso il locale sarà al ${pct(p.pAfter)} del limite.`}
+    else {verdict="Uscita";text=`Dopo l'uscita il locale sarà al ${pct(p.pAfter)} del limite.`}
+    const w=x=>Math.min(100,x*100).toFixed(1)+"%";
+    box.innerHTML=`<div class="check ${p.st}" role="status" aria-live="assertive">
+      <div class="verdict">${verdict}</div><div>${text}</div>
+      <div class="bar" aria-hidden="true"><i style="width:${w(Math.max(p.pAfter,p.pNow))}"></i><i class="now" style="width:${w(Math.min(p.pAfter,p.pNow))}"></i></div>
+      <div class="nums num"><span>Ora ${fmt(p.t)} MJ</span><span>Dopo ${fmt(p.after)} MJ</span><span>Limite ${fmt(p.lim)} MJ</span></div></div>`;
+    const blocked=isIn&&p.st==="bad";
+    btn.disabled=blocked||S.busy||!S.writeOk;
+    btn.textContent=blocked?"Registrazione bloccata":isIn?`Registra entrata di ${fmt(p.q)}`:`Registra uscita di ${fmt(p.q)}`;
+    const key=p.st+(isIn?"i":"o");
+    if(key!==S.lastState&&isIn&&p.st!=="ok") buzz();
+    S.lastState=key;
+  }
+  async function save(){
+    const p=preview(); if(!p||S.busy) return;
+    if(S.form.tipo==="Entrata"&&p.st==="bad") return;
+    S.busy=true; updateCheck();
+    const now=new Date();
+    const doc={ts:now.toISOString(),locale:p.l.id,codice:p.m.codice,materiale:p.m.nome,mjUnita:p.m.mj,qta:p.q,tipo:S.form.tipo,mj:p.delta,ddt:S.form.ddt.trim().slice(0,80),by:S.uid||null,avviso:S.form.tipo==="Entrata"&&p.st==="warn"};
+    try{ await S.db.collection("movimenti").add(doc);
+      toast(S.form.tipo==="Entrata"?"Entrata registrata":"Uscita registrata");
+      S.form.qta=1; S.form.ddt=""; S.lastState=null;
+    }catch(e){
+      if(e&&e.code==="invalid_argument"){S.writeOk=false;toast("Non hai i permessi per registrare")}
+      else if(e&&e.code==="quota_exceeded"){toast("Registro pieno: avvisa il responsabile")}
+      else toast("Non salvato: controlla la connessione e riprova");
+    }
+    S.busy=false; if(S.tab==="reg") render();
+  }
+
+  // ---------- LOCALI ----------
+  function renderLoc(app){
+    const T=totals();
+    const cards=S.config.locali.map(l=>{const t=T[l.id]||0,p=t/l.limite,st=level(p,l);
+      return `<div class="room"><div class="top"><span class="name">${esc(l.nome)}</span><span class="pill ${st}">${label[st]}</span></div>
+      <div class="bar"><i style="width:${Math.min(100,p*100).toFixed(1)}%;background:var(--${st==="ok"?"accent":st})"></i></div>
+      <div class="nums num"><span>${pct(p)}</span><span>${fmt(t)} / ${fmt(l.limite)} MJ</span><span>margine ${fmt(Math.max(0,l.limite-t))} MJ</span></div>
+      <div class="hint">${esc(l.gestore||"")}${l.nota?" · "+esc(l.nota):""}</div></div>`}).join("");
+    app.innerHTML=`<section class="field"><h2>Situazione dei locali</h2>${cards}</section>
+      <button class="btn ghost" id="xls">Scarica registro Excel</button>
+      <div class="hint">Il limite di ogni locale deriva dalla relazione antincendio (q<sub>f,d</sub> ≤ 300 MJ/m²). Giallo dal ${pct(S.config.soglia||0.85)}: avvisare il coordinatore antincendio.</div>`;
+  }
+
+  // ---------- STORICO ----------
+  async function renderSto(app){
+    const rows=S.movs.slice(0,150);
+    if(!rows.length){app.innerHTML=`<section class="field"><h2>Ultimi movimenti</h2><div class="notice">Nessun movimento ancora. Le registrazioni fatte da Registra compaiono qui, con chi le ha inserite.</div></section>`;return}
+    const ids=[...new Set(rows.map(r=>r.by).filter(Boolean))];
+    if(S.user&&ids.length){try{S.names=await S.user.profiles(ids)}catch(e){}}
+    if(S.tab!=="sto") return;
+    app.innerHTML=`<section class="field"><h2>Ultimi movimenti</h2><div class="list">${rows.map(r=>{
+      const l=loc(r.locale), d=new Date(r.ts), who=(r.by&&S.names[r.by]&&S.names[r.by].name)||"Operatore";
+      const del=S.canEdit?(S.confirmDel===r._id?`<button class="btn small danger" data-del="${esc(r._id)}">Conferma eliminazione</button>`:`<button class="btn small ghost" data-ask="${esc(r._id)}">Elimina</button>`):"";
+      return `<div class="row"><div><b>${esc(r.materiale)}</b> × ${fmt(r.qta)}</div><div class="r ${r.tipo==="Uscita"?"out":""}">${r.tipo==="Uscita"?"−":"+"}${fmt(Math.abs(r.mj))} MJ</div>
+      <div class="meta"><span>${esc(r.tipo)} · ${esc(l?l.nome:r.locale)}</span><span>${d.toLocaleDateString("it-IT")} ${d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}</span><span>${esc(who)}</span>${r.ddt?`<span>${esc(r.ddt)}</span>`:""}${r.avviso?`<span class="pill warn">sopra soglia</span>`:""}${del}</div></div>`}).join("")}</div></section>
+      <button class="btn ghost" id="xls">Scarica registro Excel</button>`;
+  }
+
+  // ---------- IMPOSTAZIONI ----------
+  function renderImp(app){
+    const c=S.config;
+    app.innerHTML=`<section class="field"><h2>Locali</h2><div class="scroll"><table class="set"><thead><tr><th>Locale</th><th>Limite MJ</th><th>Carico iniziale MJ</th></tr></thead><tbody>
+      ${c.locali.map((l,i)=>`<tr><td>${esc(l.nome)}</td><td><input id="lim${i}" type="number" inputmode="numeric" value="${l.limite}"></td><td><input id="ini${i}" type="number" inputmode="numeric" value="${l.iniziale}"></td></tr>`).join("")}
+      </tbody></table></div><div class="hint">Carico iniziale = materiale già presente prima di usare l'app (inventario). Aggiornalo dopo un inventario fisico.</div></section>
+      <section class="field"><h2><label for="soglia">Soglia di attenzione (%)</label></h2><input id="soglia" type="number" min="50" max="99" value="${Math.round((c.soglia||0.85)*100)}"></section>
+      <section class="field"><h2>Materiali</h2><div class="scroll"><table class="set"><thead><tr><th>Codice</th><th>Descrizione</th><th>MJ/unità</th></tr></thead><tbody id="mats">
+      ${c.materiali.map((m,i)=>`<tr><td><input id="mc${i}" type="text" value="${esc(m.codice)}"></td><td><input id="mn${i}" type="text" value="${esc(m.nome)}"></td><td><input id="mm${i}" type="number" inputmode="numeric" value="${m.mj}"></td></tr>`).join("")}
+      <tr><td><input id="mcN" type="text" placeholder="Nuovo"></td><td><input id="mnN" type="text" placeholder="Descrizione"></td><td><input id="mmN" type="number" inputmode="numeric" placeholder="MJ"></td></tr>
+      </tbody></table></div><div class="hint">Per eliminare un materiale svuota il suo codice. I movimenti già registrati conservano i MJ del momento.</div></section>
+      <button class="btn" id="saveimp">Salva impostazioni</button>`;
+  }
+  async function saveImp(){
+    const c=JSON.parse(JSON.stringify(S.config));
+    c.locali.forEach((l,i)=>{const a=Number($("#lim"+i).value),b=Number($("#ini"+i).value);if(a>0)l.limite=a;if(b>=0)l.iniziale=b});
+    const s=Number($("#soglia").value); if(s>=50&&s<=99) c.soglia=s/100;
+    const mats=[]; c.materiali.forEach((m,i)=>{const cd=$("#mc"+i).value.trim(),nm=$("#mn"+i).value.trim(),mj=Number($("#mm"+i).value);if(cd&&nm&&mj>=0)mats.push({codice:cd,nome:nm,mj})});
+    const cd=$("#mcN").value.trim(),nm=$("#mnN").value.trim(),mj=Number($("#mmN").value); if(cd&&nm&&mj>=0&&!mats.some(m=>m.codice===cd)) mats.push({codice:cd,nome:nm,mj});
+    c.materiali=mats; c.aggiornato=new Date().toISOString();
+    try{await S.db.doc("config/app").set(c);toast("Impostazioni salvate")}catch(e){toast("Non salvato: solo gli Editor possono cambiare le impostazioni")}
+  }
+
+  // ---------- EXCEL ----------
+  function loadXLSX(){return new Promise((res,rej)=>{if(window.XLSX)return res();const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=()=>res();s.onerror=rej;document.head.appendChild(s)})}
+  async function exportXlsx(){
+    const dl=await claude.use("downloads"); if(!dl){toast("Download non disponibile in questa vista");return}
+    try{await loadXLSX()}catch(e){toast("Impossibile preparare il file Excel");return}
+    const T=totals();
+    const sit=[["Locale","Gestore","Limite (MJ)","Carico attuale (MJ)","% sul limite","Stato","Margine (MJ)"]].concat(S.config.locali.map(l=>{const t=T[l.id]||0,p=t/l.limite;return [l.nome,l.gestore||"",l.limite,Math.round(t),Math.round(p*1000)/1000,label[level(p,l)],Math.round(Math.max(0,l.limite-t))]}));
+    const ids=[...new Set(S.movs.map(r=>r.by).filter(Boolean))]; let names={}; if(S.user&&ids.length){try{names=await S.user.profiles(ids)}catch(e){}}
+    const mov=[["Data","Ora","Locale","Codice","Materiale","Tipo","Quantità","MJ/unità","MJ","Rif. DDT","Operatore"]].concat(S.movs.slice().reverse().map(r=>{const d=new Date(r.ts),l=loc(r.locale);return [d.toLocaleDateString("it-IT"),d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}),l?l.nome:r.locale,r.codice,r.materiale,r.tipo,r.qta,r.mjUnita,Math.round(r.mj),r.ddt||"",(r.by&&names[r.by]&&names[r.by].name)||""]}));
+    const mat=[["Codice","Descrizione","MJ per unità"]].concat(S.config.materiali.map(m=>[m.codice,m.nome,m.mj]));
+    const wb=XLSX.utils.book_new();
+    const ws1=XLSX.utils.aoa_to_sheet(sit); ws1["!cols"]=[{wch:22},{wch:14},{wch:12},{wch:18},{wch:12},{wch:18},{wch:14}];
+    for(let r=1;r<sit.length;r++){const c=ws1[XLSX.utils.encode_cell({r,c:4})];if(c)c.z="0.0%"}
+    const ws2=XLSX.utils.aoa_to_sheet(mov); ws2["!cols"]=[{wch:11},{wch:7},{wch:20},{wch:11},{wch:40},{wch:9},{wch:9},{wch:9},{wch:10},{wch:20},{wch:20}];
+    const ws3=XLSX.utils.aoa_to_sheet(mat); ws3["!cols"]=[{wch:12},{wch:50},{wch:13}];
+    XLSX.utils.book_append_sheet(wb,ws1,"Situazione");XLSX.utils.book_append_sheet(wb,ws2,"Movimenti");XLSX.utils.book_append_sheet(wb,ws3,"Materiali");
+    const buf=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+    const d=new Date(), name=`Registro_carico_Ed298_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}.xlsx`;
+    try{await dl.save({filename:name,data:new Uint8Array(buf)});toast("File Excel pronto")}catch(e){if(e&&e.code!=="declined")toast("Download non riuscito")}
+  }
+
+  // ---------- EVENTI ----------
+  document.addEventListener("click",e=>{
+    const t=e.target.closest("button"); if(!t) return;
+    if(t.dataset.tab){S.tab=t.dataset.tab;S.confirmDel=null;render();window.scrollTo(0,0);return}
+    if(t.dataset.loc){S.form.locale=t.dataset.loc;render();return}
+    if(t.dataset.tipo){S.form.tipo=t.dataset.tipo;render();return}
+    if(t.dataset.q){S.form.qta=Math.max(1,(Math.floor(Number(S.form.qta))||0)+Number(t.dataset.q));const i=$("#qta");if(i)i.value=S.form.qta;updateCheck();return}
+    if(t.id==="save"){save();return}
+    if(t.id==="xls"){exportXlsx();return}
+    if(t.id==="saveimp"){saveImp();return}
+    if(t.id==="reset"){S.resetAsk=true;render();return}
+    if(t.id==="resetok"){S.resetAsk=false;window.claude._reset();toast("Dati di prova ripristinati");return}
+    if(t.dataset.ask){S.confirmDel=t.dataset.ask;render();return}
+    if(t.dataset.del){const id=t.dataset.del;S.confirmDel=null;S.db.doc("movimenti/"+id).delete().then(()=>toast("Movimento eliminato"),()=>toast("Eliminazione non riuscita"));return}
+  });
+  document.addEventListener("input",e=>{
+    if(e.target.id==="qta"){S.form.qta=e.target.value;updateCheck()}
+    else if(e.target.id==="ddt"){S.form.ddt=e.target.value}
+    else if(e.target.id==="opname"&&window.claude._setName){const v=e.target.value.slice(0,60);window.claude._setName(v);$("#who").textContent=v}
+  });
+  document.addEventListener("change",e=>{if(e.target.id==="mat"){S.form.mat=e.target.value;updateCheck()}});
+
+  // ---------- AVVIO ----------
+  render();
+  (async()=>{
+    const [db,user]=await Promise.all([claude.use("db"),claude.use("user")]);
+    if(!db){S.offline=true;render();return}
+    S.db=db; S.user=user; S.demo=!!window.claude.demo;
+    if(user){
+      const me=await user.me(); S.uid=me.id; S.canEdit=!!me.canEdit;
+      const w=await user.can("data.write"); if(w===false) S.writeOk=false;
+      $("#who").textContent=me.name||"";
+    }
+    let gotC=false,gotM=false; const done=()=>{if(gotC&&gotM){S.ready=true;render()}};
+    db.doc("config/app").onSnapshot(s=>{S.config=s.exists?s.data():null;if(S.config&&S.form.locale&&!loc(S.form.locale))S.form.locale=null;gotC=true;if(S.ready){S.tab==="imp"?0:render()}else done()},()=>{gotC=true;done()});
+    db.collection("movimenti").orderBy("ts","desc").onSnapshot(s=>{S.movs=s.docs.map(d=>Object.assign({_id:d.id},d.data()));gotM=true;if(S.ready){S.tab==="reg"?updateCheck():render();if(S.tab==="reg"){const T=totals();document.querySelectorAll("[data-loc]").forEach(b=>{const l=loc(b.dataset.loc);if(l)b.querySelector("small").textContent=pct((T[l.id]||0)/l.limite)+" del limite"})}}else done()},()=>{gotM=true;done()});
+  })();
+})();
+</script>
+</body>
+</html>
